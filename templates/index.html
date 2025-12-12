@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Netcup Monitor Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --bg-body: #f4f6f9; --bg-card: #ffffff; --text-primary: #1f2937; --text-secondary: #6b7280; --border-color: #e5e7eb; --accent-brand: #0d6efd; }
+        body { background-color: var(--bg-body); color: var(--text-primary); font-family: 'Inter', sans-serif; padding-bottom: 60px; }
+        .dashboard-container { max-width: 1400px; margin: 0 auto; padding: 2rem 1rem; }
+        
+        .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; flex-wrap: wrap; gap: 1rem; }
+        
+        .white-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1.5rem; }
+        .card-header-custom { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .card-title { font-weight: 700; font-size: 1.1rem; margin: 0; }
+        
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-box { 
+            background: #fff; padding: 1rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-color); 
+            cursor: pointer; position: relative; overflow: hidden; transition: all 0.2s ease;
+        }
+        .stat-box:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .stat-box.active { border-color: var(--accent-brand); background-color: #eff6ff; box-shadow: 0 0 0 1px var(--accent-brand) inset; }
+        .stat-num { font-size: 1.8rem; font-weight: 700; line-height: 1.1; margin-bottom: 0.1rem; }
+        .stat-label { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .nav-pills-custom { gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; justify-content: center; }
+        .nav-pills-custom .nav-link { background: #fff; border: 1px solid var(--border-color); color: var(--text-secondary); font-weight: 500; border-radius: 8px; white-space: nowrap; }
+        .nav-pills-custom .nav-link.active { background: var(--accent-brand); color: #fff; border-color: var(--accent-brand); }
+        
+        .table-custom { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .table-custom th { text-align: left; padding: 1rem 1.5rem; background: #f9fafb; color: var(--text-secondary); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; border-bottom: 1px solid var(--border-color); cursor: pointer; user-select: none; white-space: nowrap; }
+        .table-custom th:hover { background: #f3f4f6; color: var(--text-primary); }
+        .table-custom td { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; font-size: 0.95rem; white-space: nowrap; }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .metric-main { font-weight: 700; font-size: 1.05rem; }
+        .metric-sub { font-size: 0.8rem; color: var(--text-secondary); display: block; margin-top: 2px; }
+        .badge-status { padding: 5px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+        .bg-success-subtle { background: #e8f5e9; color: #1b5e20; }
+        .bg-danger-subtle { background: #ffebee; color: #c62828; }
+        .bg-gray-subtle { background: #f3f4f6; color: #4b5563; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+        .form-control { border-radius: 8px; padding: 0.5rem 0.8rem; font-size: 0.9rem; }
+        .form-hint { font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; }
+        .w-compact { max-width: 200px; }
+        .w-medium { max-width: 350px; }
+        
+        /* 图表容器 */
+        .chart-container { position: relative; height: 300px; width: 100%; padding: 20px; border-top: 1px solid var(--border-color); }
+
+        .config-row { display: flex; gap: 15px; align-items: center; padding: 10px 15px; border-bottom: 1px solid #f0f0f0; background: #fff; }
+        .config-header { display: flex; gap: 15px; padding: 10px 15px; background: #f3f4f6; border-bottom: 1px solid var(--border-color); font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); }
+        
+        @media (min-width: 769px) {
+            .cfg-name { width: 25%; }
+            .cfg-ip { width: 30%; }
+            .cfg-id { width: 30%; }
+            .cfg-mode { width: 10%; }
+            .cfg-action { width: 5%; text-align: right; }
+            .cfg-soap-id { width: 45%; }
+            .cfg-soap-pass { width: 45%; }
+            .cfg-soap-action { width: 10%; text-align: right; }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container { padding: 1rem 0.5rem; }
+            .dashboard-header { flex-direction: column; text-align: center; gap: 1.5rem; margin-bottom: 2rem; }
+            .dashboard-header .d-flex.gap-2 { width: 100%; justify-content: center; }
+            .status-grid { grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+            .stat-box { padding: 1rem; }
+            .stat-num { font-size: 1.5rem; }
+            .nav-pills-custom .nav-link { font-size: 0.85rem; padding: 0.4rem 0.8rem; }
+            .config-header { display: none; }
+            .config-row { flex-direction: column; align-items: stretch; gap: 10px; padding: 15px; border-bottom: 8px solid #f4f6f9; }
+            .config-row > div { width: 100% !important; }
+            .config-row input:not([type="checkbox"]) { width: 100% !important; max-width: none; }
+            .cfg-mode { display: flex; justify-content: space-between; align-items: center; background: #f9fafb; padding: 10px; border-radius: 8px; }
+            .form-switch .form-check-input { width: 2em; margin-left: 0; float: none; } 
+            
+            /* === 修复移动端按钮过大 === */
+            /* 仅让列表内的删除按钮满宽，顶部的添加按钮保持紧凑 */
+            .cfg-action .btn-sm, .cfg-soap-action .btn-sm { width: 100%; padding: 8px; margin-top: 5px; }
+            .card-header-custom .btn-sm { width: auto; padding: 0.4rem 1rem; }
+            
+            .table-custom th, .table-custom td { padding: 0.8rem 1rem; }
+            .chart-container { height: 250px; padding: 10px; }
+        }
+        
+        #loginOverlay { position: fixed; inset: 0; background: rgba(255,255,255,0.85); backdrop-filter: blur(5px); z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.3s; }
+        #loginOverlay.active { opacity: 1; pointer-events: all; }
+        .login-box { background: #fff; padding: 2.5rem; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); width: 100%; max-width: 380px; border: 1px solid var(--border-color); text-align: center; }
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast-msg { background: #fff; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-left: 4px solid var(--accent-brand); display: flex; align-items: center; margin-bottom: 10px; animation: slideIn 0.3s; border: 1px solid var(--border-color); }
+        @keyframes slideIn { from{transform: translateX(100%);} to{transform: translateX(0);} }
+    </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+<div id="loginOverlay">
+    <div class="login-box">
+        <div class="mb-4"><i class="bi bi-shield-lock text-primary" style="font-size: 3rem;"></i></div>
+        <h4 class="fw-bold mb-2">需要管理员权限</h4>
+        <input type="password" id="loginPass" class="form-control text-center mb-3" placeholder="输入管理员密码" onkeypress="if(event.key==='Enter') doLogin()">
+        <button class="btn btn-primary w-100 py-2 rounded-3 fw-bold" onclick="doLogin()">解锁进入</button>
+    </div>
+</div>
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <div>
+            <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-3">
+                <h3 class="fw-bold m-0" style="letter-spacing: -0.5px;">Netcup Monitor <span class="text-primary">Pro</span></h3>
+            </div>
+            <div class="text-secondary small mt-1">
+                <i class="bi bi-clock me-1"></i> <span id="lastUpdated">正在获取数据...</span>
+                <span class="ms-2 opacity-50">|</span> <span class="ms-2">By 懒羊羊</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <div id="adminControls" class="d-none d-flex gap-2">
+                <button class="btn btn-white border" id="btnToggleIP" onclick="toggleIPs()"><i class="bi bi-eye"></i> IP</button>
+                <button class="btn btn-white border" onclick="triggerRun()"><i class="bi bi-arrow-repeat"></i> 刷新</button>
+                <button class="btn btn-primary" onclick="saveConfig()"><i class="bi bi-save"></i> 保存</button>
+                <button class="btn btn-danger" onclick="doLogout()"><i class="bi bi-box-arrow-right"></i></button>
+            </div>
+            <div id="guestControls"><button class="btn btn-dark" onclick="openLogin()"><i class="bi bi-person-lock me-2"></i>登录</button></div>
+        </div>
+    </div>
+
+    <div class="status-grid" id="statusSummary"></div>
+
+    <div class="d-flex justify-content-center mb-4">
+        <ul class="nav nav-pills-custom">
+            <li class="nav-item"><button class="nav-link active" onclick="switchTab('health')"><i class="bi bi-heart-pulse me-2"></i>体质分析</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchTab('traffic')"><i class="bi bi-bar-chart me-2"></i>流量统计</button></li>
+            <li class="nav-item protected-tab d-none"><button class="nav-link" onclick="switchTab('servers')"><i class="bi bi-hdd-rack me-2"></i>实例配置</button></li>
+            <li class="nav-item protected-tab d-none"><button class="nav-link" onclick="switchTab('global')"><i class="bi bi-sliders me-2"></i>全局设置</button></li>
+            <li class="nav-item protected-tab d-none"><button class="nav-link" onclick="switchTab('accounts')"><i class="bi bi-person-badge me-2"></i>SCP账号</button></li>
+        </ul>
+    </div>
+
+    <div id="tab-content-area">
+        <div id="view-health" class="tab-view">
+            <div class="white-card">
+                <div class="card-header-custom"><div class="card-title">实例健康报告</div></div>
+                <div class="table-responsive">
+                    <table class="table-custom" id="healthTable">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTable('healthTable', 0)">服务器名称 <i class="bi bi-arrow-down-up ms-1 text-black-50"></i></th>
+                                <th onclick="sortTable('healthTable', 1)">当前状态 <i class="bi bi-arrow-down-up ms-1 text-black-50"></i></th>
+                                <th onclick="sortTable('healthTable', 2, 'data-val')">状态持续时长 <i class="bi bi-arrow-down-up ms-1 text-black-50"></i></th>
+                                <th onclick="sortTable('healthTable', 3, 'data-val')">今日限速时长 <i class="bi bi-arrow-down-up ms-1 text-black-50"></i></th>
+                                <th onclick="sortTable('healthTable', 4, 'data-val')">日均限速 <i class="bi bi-arrow-down-up ms-1 text-black-50"></i></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="chart-container">
+                    <canvas id="healthChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-traffic" class="tab-view d-none">
+            <div class="white-card">
+                <div class="card-header-custom"><div class="card-title">流量统计中心</div></div>
+                <div class="table-responsive">
+                    <table class="table-custom" id="trafficTable">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTable('trafficTable', 0)">服务器名称</th>
+                                <th onclick="sortTable('trafficTable', 1)">状态</th>
+                                <th onclick="sortTable('trafficTable', 2, 'data-val')">QB当前总量</th>
+                                <th onclick="sortTable('trafficTable', 3, 'data-val')">今日流量</th>
+                                <th onclick="sortTable('trafficTable', 4, 'data-val')">本月流量</th>
+                                <th onclick="sortTable('trafficTable', 5, 'data-val')">日均流量</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-servers" class="tab-view d-none">
+            <div class="white-card">
+                <div class="card-header-custom">
+                    <div class="card-title">实例配置</div>
+                    <button class="btn btn-sm btn-primary" onclick="addServerRow()"><i class="bi bi-plus-lg"></i> 添加</button>
+                </div>
+                <div class="config-header">
+                    <div class="cfg-name">名称</div>
+                    <div class="cfg-ip">IP地址</div>
+                    <div class="cfg-id">Client ID (Hash)</div>
+                    <div class="cfg-mode">模式</div>
+                    <div class="cfg-action"></div>
+                </div>
+                <div id="serverContainer"></div>
+                <div class="p-3 bg-light border-top text-secondary small">
+                    <i class="bi bi-info-circle me-1"></i> <strong>关于“不托管”：</strong> 开启后，脚本只会记录该实例的流量和限速状态，<strong>不会</strong>对QB里的种子进行删除或暂停操作，也<strong>不会</strong>参与Vertex的任何联动。
+                </div>
+            </div>
+        </div>
+
+        <div id="view-global" class="tab-view d-none">
+            <div class="white-card p-4">
+                <div class="row g-5">
+                    <div class="col-md-6">
+                        <h5 class="fw-bold mb-3 border-bottom pb-2">qBittorrent 连接</h5>
+                        <div class="mb-3 row align-items-center">
+                            <label class="col-sm-3 col-form-label">用户名</label>
+                            <div class="col-sm-9"><input id="qb_user" class="form-control w-medium" placeholder="例如: admin"></div>
+                        </div>
+                        <div class="mb-3 row align-items-center">
+                            <label class="col-sm-3 col-form-label">密码</label>
+                            <div class="col-sm-9"><input id="qb_pass" type="password" class="form-control w-medium"></div>
+                        </div>
+                        <div class="mb-3 row align-items-center">
+                            <label class="col-sm-3 col-form-label">端口</label>
+                            <div class="col-sm-9"><input id="qb_port" type="number" class="form-control w-compact" placeholder="8080"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">排除 IP (逗号分隔)</label>
+                            <textarea id="qb_exclude" class="form-control" rows="2" placeholder="192.168.1.5, 10.0.0.1"></textarea>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="fw-bold mb-3 border-bottom pb-2">Vertex 联动配置</h5>
+                        <div class="mb-3 row align-items-center">
+                            <label class="col-sm-3 col-form-label">地址</label>
+                            <div class="col-sm-9"><input id="vt_url" class="form-control w-medium" placeholder="http://192.168.1.2:3000"></div>
+                        </div>
+                        <div class="mb-3 row align-items-center">
+                            <label class="col-sm-3 col-form-label">API 用户</label>
+                            <div class="col-sm-9"><input id="vt_user" class="form-control w-medium"></div>
+                        </div>
+                        <div class="mb-3 row align-items-center">
+                            <label class="col-sm-3 col-form-label">API 密码</label>
+                            <div class="col-sm-9"><input id="vt_pass" type="password" class="form-control w-medium"></div>
+                        </div>
+                        <div class="mb-3 row align-items-center">
+                            <label class="col-sm-3 col-form-label">容器名</label>
+                            <div class="col-sm-9">
+                                <input id="vt_container" class="form-control w-compact" placeholder="vertex">
+                                <div class="form-hint">用于自动重启 Vertex (本地部署时)</div>
+                            </div>
+                        </div>
+                        <div class="mb-3 row align-items-center">
+                            <label class="col-sm-3 col-form-label">监控 RSS ID</label>
+                            <div class="col-sm-9">
+                                <input id="rss_ids" class="form-control" placeholder="4c145005, c0bf7481 (逗号分隔)">
+                                <div class="form-hint">自动从 Vertex 获取并更新规则，无需挂载文件</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 mt-4">
+                        <h5 class="fw-bold mb-3 border-bottom pb-2">策略与安全</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">保留分类 (Keep Categories)</label>
+                                    <input id="keep_cats" class="form-control" placeholder="keep, PTER, FRD">
+                                    <div class="form-hint">被限速时，非这些分类的种子将被删除</div>
+                                </div>
+                                <div class="mb-3 row">
+                                    <div class="col-6">
+                                        <label class="form-label">TG Bot Token</label>
+                                        <input id="tg_token" class="form-control">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">TG Chat ID</label>
+                                        <input id="tg_chat" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label text-danger">修改管理员密码</label>
+                                    <input id="admin_pass" type="password" class="form-control w-medium" placeholder="留空则不修改">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-accounts" class="tab-view d-none">
+             <div class="white-card">
+                <div class="card-header-custom"><div class="card-title">Netcup SCP 账号</div><button class="btn btn-sm btn-primary" onclick="addSoapRow()"><i class="bi bi-plus-lg"></i> 添加</button></div>
+                <!-- 新增：WSDL URL 配置 -->
+                <div class="p-3 border-bottom bg-light">
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="fw-bold small text-secondary text-nowrap">WSDL 接口地址:</label>
+                        <input id="soap_wsdl" class="form-control form-control-sm font-mono w-100" placeholder="https://www.servercontrolpanel.de/WSEndUser?wsdl">
+                    </div>
+                </div>
+                <div class="config-header">
+                    <div class="cfg-soap-id">客户号 (Customer ID)</div>
+                    <div class="cfg-soap-pass">API 密码</div>
+                    <div class="cfg-soap-action"></div>
+                </div>
+                <div id="soapContainer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script>
+    let rawData = []; let config = {}; let currentFilter = 'all'; let isLoggedIn = false; let showIPs = false;
+    let healthChart = null;
+    let trafficChart = null;
+    const chartColors = [
+        '#0d6efd', '#10b981', '#f59e0b', '#ef4444', '#6610f2', 
+        '#d63384', '#fd7e14', '#20c997', '#0dcaf0', '#6c757d'
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => { checkLoginStatus(); loadData(); setInterval(loadData, 60000); });
+
+    function fmtDur(s){
+        if(!s && s!==0) return '-';
+        let sec = parseInt(s);
+        if(sec < 60) return sec + 's';
+        let h = Math.floor(sec / 3600);
+        let m = Math.floor((sec % 3600) / 60);
+        return `${h}h ${m}m`;
+    }
+    function fmtBytes(b){if(!b)return'0 B';const k=1024,s=['B','KB','MB','GB','TB'];const i=Math.floor(Math.log(b)/Math.log(k));return parseFloat((b/Math.pow(k,i)).toFixed(2))+' '+s[i];}
+    function showToast(m,t){const c=document.getElementById('toast-container');c.innerHTML+=`<div class="toast-msg" style="border-left-color:${t==='error'?'#ef4444':'#10b981'}"><i class="bi ${t==='error'?'bi-x-circle text-danger':'bi-check-circle text-success'} me-2"></i><span>${m}</span></div>`;setTimeout(()=>c.innerHTML='',3000);}
+    function switchTab(t){ document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active')); event.target.classList.add('active'); document.querySelectorAll('.tab-view').forEach(v=>v.classList.add('d-none')); document.getElementById('view-'+t).classList.remove('d-none'); }
+
+    function sortTable(tableId, col, attr) {
+        const tbody = document.querySelector(`#${tableId} tbody`); const rows = Array.from(tbody.rows);
+        let currentAsc = tbody.getAttribute(`data-asc-${col}`) === 'true';
+        let newAsc = !currentAsc;
+        tbody.setAttribute(`data-asc-${col}`, newAsc);
+        rows.sort((a, b) => {
+            let valA = parseFloat(a.cells[col].getAttribute(attr || 'data-nothing') || 0);
+            let valB = parseFloat(b.cells[col].getAttribute(attr || 'data-nothing') || 0);
+            if(isNaN(valA) && !attr) {
+                let txtA = a.cells[col].innerText.trim();
+                let txtB = b.cells[col].innerText.trim();
+                return newAsc ? txtA.localeCompare(txtB) : txtB.localeCompare(txtA);
+            }
+            return newAsc ? valA - valB : valB - valA;
+        });
+        rows.forEach(r => tbody.appendChild(r));
+    }
+
+    function checkLoginStatus() { fetch('/api/auth/status').then(r=>r.json()).then(d => { isLoggedIn = d.logged_in; updateUIState(); if(isLoggedIn) fetchConfig(); }); }
+    function openLogin() { document.getElementById('loginOverlay').classList.add('active'); }
+    function doLogin() { fetch('/api/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:document.getElementById('loginPass').value})}).then(r=>{if(r.ok) location.reload(); else showToast("密码错误",'error');}); }
+    function doLogout() { fetch('/api/auth/logout', {method:'POST'}).then(() => location.reload()); }
+    function updateUIState() {
+        if(isLoggedIn){ document.getElementById('adminControls').classList.remove('d-none'); document.getElementById('guestControls').classList.add('d-none'); document.querySelectorAll('.protected-tab').forEach(el=>el.classList.remove('d-none')); }
+        else { document.getElementById('adminControls').classList.add('d-none'); document.getElementById('guestControls').classList.remove('d-none'); document.querySelectorAll('.protected-tab').forEach(el=>el.classList.add('d-none')); }
+    }
+    function toggleIPs() { showIPs = !showIPs; document.getElementById('btnToggleIP').innerHTML = showIPs ? '<i class="bi bi-eye-slash"></i> 隐藏IP' : '<i class="bi bi-eye"></i> IP'; renderTables(); }
+
+    function loadData() {
+        fetch('/api/stats_advanced').then(r => r.json()).then(data => {
+            rawData = data.servers;
+            if (data.is_admin !== undefined) isLoggedIn = data.is_admin;
+            document.getElementById('lastUpdated').innerText = data.last_updated;
+            renderStatusCards(data.summary);
+            renderTables();
+            if (data.trends) updateCharts(data.trends);
+        });
+    }
+
+    // === 图表逻辑 ===
+    function initCharts() {
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, padding: 20 } },
+                tooltip: { 
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+                    titleColor: '#1f2937', 
+                    bodyColor: '#1f2937', 
+                    borderColor: '#e5e7eb', 
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {}
+                }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: { beginAtZero: true, grid: { color: '#f3f4f6' } }
+            }
+        };
+
+        const ctxHealth = document.getElementById('healthChart').getContext('2d');
+        healthChart = new Chart(ctxHealth, {
+            type: 'line',
+            data: { labels: [], datasets: [] },
+            options: {
+                ...commonOptions,
+                plugins: { ...commonOptions.plugins, title: { display: true, text: '近七日限速时长 (小时)', font: { size: 14 } } }
+            }
+        });
+
+        const ctxTraffic = document.getElementById('trafficChart').getContext('2d');
+        const trafficOptions = JSON.parse(JSON.stringify(commonOptions)); 
+        trafficOptions.plugins.title = { display: true, text: '近七日流量消耗', font: { size: 14 } };
+        
+        trafficChart = new Chart(ctxTraffic, {
+            type: 'line',
+            data: { labels: [], datasets: [] },
+            options: trafficOptions
+        });
+    }
+
+    function updateCharts(trends) {
+        if (!healthChart) initCharts();
+        
+        const labels = trends.dates;
+        const servers = Object.keys(trends.data);
+        
+        let maxTrafficVal = 0;
+        servers.forEach(name => {
+            const maxInServer = Math.max(...trends.data[name].traffic);
+            if (maxInServer > maxTrafficVal) maxTrafficVal = maxInServer;
+        });
+        
+        const useTB = maxTrafficVal >= 1024;
+        const trafficUnit = useTB ? 'TB' : 'GB';
+        
+        trafficChart.options.plugins.title.text = `近七日流量消耗 (${trafficUnit})`;
+        trafficChart.options.scales.y.ticks = { callback: function(value) { return useTB ? (value / 1024).toFixed(1) : value; } };
+        trafficChart.options.plugins.tooltip.callbacks.label = function(context) {
+            let label = context.dataset.label || '';
+            if (label) label += ': ';
+            let val = context.parsed.y;
+            if (useTB) label += (val / 1024).toFixed(2) + ' TB';
+            else label += val.toFixed(2) + ' GB';
+            return label;
+        };
+
+        const healthDatasets = servers.map((name, i) => ({
+            label: name,
+            data: trends.data[name].health,
+            borderColor: chartColors[i % chartColors.length],
+            backgroundColor: chartColors[i % chartColors.length],
+            borderWidth: 2,
+            tension: 0.3,
+            pointRadius: 2,
+            pointHoverRadius: 5
+        }));
+
+        const trafficDatasets = servers.map((name, i) => ({
+            label: name,
+            data: trends.data[name].traffic,
+            borderColor: chartColors[i % chartColors.length],
+            backgroundColor: chartColors[i % chartColors.length],
+            borderWidth: 2,
+            tension: 0.3,
+            pointRadius: 2,
+            pointHoverRadius: 5
+        }));
+
+        healthChart.data.labels = labels;
+        healthChart.data.datasets = healthDatasets;
+        healthChart.update();
+
+        trafficChart.data.labels = labels;
+        trafficChart.data.datasets = trafficDatasets;
+        trafficChart.update();
+    }
+
+    function renderStatusCards(s) {
+        const c = (k,l,v,cl) => `
+            <div class="stat-box ${currentFilter===k?'active':''}" onclick="currentFilter='${k}';renderTables();renderStatusCards({total:${s.total},high:${s.high},low:${s.low},offline:${s.offline}})">
+                <div class="stat-num ${cl}">${v}</div>
+                <div class="stat-label">${l}</div>
+            </div>`;
+        document.getElementById('statusSummary').innerHTML = c('all','总数',s.total,'text-primary') + c('high','正常',s.high,'text-success') + c('low','限速',s.low,'text-danger') + c('offline','离线',s.offline,'text-secondary');
+    }
+
+    function renderTables() {
+        const tBody = document.querySelector('#trafficTable tbody');
+        const hBody = document.querySelector('#healthTable tbody');
+        tBody.innerHTML = ''; hBody.innerHTML = '';
+        const filtered = rawData.filter(s => currentFilter === 'all' || s.status === currentFilter);
+        const gc = (u,d) => `<div class="metric-main font-mono">${fmtBytes(u+d)}</div><div class="metric-sub font-mono"><span class="text-success">↑${fmtBytes(u)}</span> <span class="text-primary ms-2">↓${fmtBytes(d)}</span></div>`;
+
+        filtered.forEach(s => {
+            let cls = s.status === 'high' ? 'bg-success-subtle' : (s.status === 'low' ? 'bg-danger-subtle' : 'bg-gray-subtle');
+            let txt = s.status === 'high' ? '正常运行' : (s.status === 'low' ? '限速中' : '离线');
+            let badge = `<span class="badge-status ${cls}"><span class="dot"></span>${txt}</span>`;
+            let nameCol = `<div class="fw-bold text-dark">${s.name}</div>${(isLoggedIn && showIPs && s.ip)?`<div class="small text-secondary font-mono">${s.ip}</div>`:''}`;
+
+            tBody.innerHTML += `<tr><td>${nameCol}</td><td>${badge}</td>
+                <td data-val="${(s.traffic.qb_current_up||0)+(s.traffic.qb_current_dl||0)}">${gc(s.traffic.qb_current_up||0, s.traffic.qb_current_dl||0)}</td>
+                <td data-val="${s.traffic.up_today+s.traffic.dl_today}">${gc(s.traffic.up_today, s.traffic.dl_today)}</td>
+                <td data-val="${s.traffic.up_month+s.traffic.dl_month}">${gc(s.traffic.up_month, s.traffic.dl_month)}</td>
+                <td data-val="${s.traffic.up_daily_avg+s.traffic.dl_daily_avg}">${gc(s.traffic.up_daily_avg, s.traffic.dl_daily_avg)}</td></tr>`;
+
+            hBody.innerHTML += `<tr><td>${nameCol}</td><td>${badge}</td>
+                <td data-val="${s.health.current_duration}"><span class="metric-main font-mono fw-bold">${fmtDur(s.health.current_duration)}</span></td>
+                <td data-val="${s.health.today_throttled}" class="${s.health.today_throttled>0?'text-danger fw-bold':''} font-mono">${fmtDur(s.health.today_throttled)}</td>
+                <td data-val="${s.health.avg_daily_throttled}" class="text-secondary font-mono">${fmtDur(s.health.avg_daily_throttled)}</td></tr>`;
+        });
+    }
+
+    function fetchConfig() { if(!isLoggedIn)return; fetch('/api/config').then(r=>r.json()).then(d => { config = d; renderForms(); }); }
+    function renderForms() {
+        document.getElementById('qb_user').value = config.qb_config?.user||''; document.getElementById('qb_pass').value = config.qb_config?.password||'';
+        document.getElementById('qb_port').value = config.qb_config?.port||''; document.getElementById('qb_exclude').value = (config.qb_config?.exclude_qb_ips||[]).join(',');
+        document.getElementById('vt_url').value = config.vertex_config?.api_url||''; document.getElementById('vt_user').value = config.vertex_config?.api_user||'';
+        document.getElementById('vt_pass').value = config.vertex_config?.api_password||''; document.getElementById('vt_container').value = config.vertex_config?.container_name||'vertex';
+        
+        document.getElementById('rss_ids').value = (config.rss_ids || []).join(', ');
+
+        document.getElementById('keep_cats').value = (config.keep_categories||[]).join(','); 
+        document.getElementById('tg_token').value = config.telegram_config?.bot_token||''; document.getElementById('tg_chat').value = config.telegram_config?.chat_id||'';
+
+        // 新增：WSDL URL 默认值填充
+        document.getElementById('soap_wsdl').value = config.soap_config?.wsdl_url || 'https://www.servercontrolpanel.de/WSEndUser?wsdl';
+
+        const sc = document.getElementById('serverContainer'); sc.innerHTML='';
+        (config.servers||[]).forEach((s,i) => {
+            sc.innerHTML += `<div class="config-row">
+                <div class="cfg-name"><input class="form-control form-control-sm" placeholder="名称" value="${s.name}" onchange="updateArr('servers',${i},'name',this.value)"></div>
+                <div class="cfg-ip"><input class="form-control form-control-sm font-mono" placeholder="IP" value="${s.ip}" onchange="updateArr('servers',${i},'ip',this.value)"></div>
+                <div class="cfg-id"><input class="form-control form-control-sm font-mono" placeholder="Client ID" value="${s.client_id||''}" onchange="updateArr('servers',${i},'client_id',this.value)"></div>
+                <div class="cfg-mode"><div class="form-check form-switch d-flex align-items-center justify-content-between w-100"><label class="small text-secondary me-2">不托管</label><input class="form-check-input" type="checkbox" ${s.unmanaged?'checked':''} onchange="updateArr('servers',${i},'unmanaged',this.checked)"></div></div>
+                <div class="cfg-action"><button class="btn btn-sm btn-light text-danger border-0" onclick="removeArr('servers',${i})"><i class="bi bi-trash-fill"></i></button></div></div>`;
+        });
+        const ac = document.getElementById('soapContainer'); ac.innerHTML='';
+        (config.soap_config?.accounts||[]).forEach((a,i) => {
+            ac.innerHTML += `<div class="config-row">
+                <div class="cfg-soap-id"><input class="form-control form-control-sm font-mono" placeholder="Customer ID" value="${a.customer_number}" onchange="updateArr('accounts',${i},'customer_number',this.value)"></div>
+                <div class="cfg-soap-pass"><input class="form-control form-control-sm font-mono" type="password" placeholder="Password" value="${a.password}" onchange="updateArr('accounts',${i},'password',this.value)"></div>
+                <div class="cfg-soap-action"><button class="btn btn-sm btn-light text-danger border-0" onclick="removeArr('accounts',${i})"><i class="bi bi-trash-fill"></i></button></div></div>`;
+        });
+    }
+    function updateArr(t,i,k,v){if(t==='servers')config.servers[i][k]=v;else config.soap_config.accounts[i][k]=v;}
+    function removeArr(t,i){if(t==='servers')config.servers.splice(i,1);else config.soap_config.accounts.splice(i,1);renderForms();}
+    function addServerRow(){if(!config.servers)config.servers=[];config.servers.push({name:'New',ip:'',client_id:'',unmanaged:false});renderForms();}
+    function addSoapRow(){if(!config.soap_config)config.soap_config={};if(!config.soap_config.accounts)config.soap_config.accounts=[];config.soap_config.accounts.push({customer_number:'',password:''});renderForms();}
+    
+    function saveConfig() {
+        if(!isLoggedIn)return; 
+        config.qb_config={user:document.getElementById('qb_user').value,password:document.getElementById('qb_pass').value,port:parseInt(document.getElementById('qb_port').value),exclude_qb_ips:document.getElementById('qb_exclude').value.split(',').filter(x=>x)};
+        config.vertex_config={api_url:document.getElementById('vt_url').value,api_user:document.getElementById('vt_user').value,api_password:document.getElementById('vt_pass').value,container_name:document.getElementById('vt_container').value};
+        
+        delete config.rss_dir;
+        config.rss_ids = document.getElementById('rss_ids').value.split(',').map(s=>s.trim()).filter(x=>x);
+
+        config.keep_categories=document.getElementById('keep_cats').value.split(',').filter(x=>x); 
+        config.telegram_config={bot_token:document.getElementById('tg_token').value,chat_id:document.getElementById('tg_chat').value};
+        
+        // 新增：保存 WSDL URL 到 soap_config
+        if(!config.soap_config) config.soap_config = {};
+        config.soap_config.wsdl_url = document.getElementById('soap_wsdl').value;
+
+        const np=document.getElementById('admin_pass').value; if(np)config.admin_password=np;
+        fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)}).then(r=>r.json()).then(res=>showToast(res.status==='success'?'配置已保存':'保存失败',res.status==='success'?'success':'error'));
+    }
+    function triggerRun() { fetch('/api/run_now', {method:'POST'}).then(()=>showToast('已触发刷新')); }
+</script>
+</body>
+</html>
