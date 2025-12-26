@@ -233,7 +233,7 @@
                             <label class="col-sm-3 col-form-label">端口</label>
                             <div class="col-sm-9"><input id="qb_port" type="number" class="form-control w-compact" placeholder="8080"></div>
                         </div>
-                        </div>
+                    </div>
                     <div class="col-md-6">
                         <h5 class="fw-bold mb-3 border-bottom pb-2">Vertex 联动配置</h5>
                         <div class="mb-3 row align-items-center">
@@ -349,19 +349,13 @@
         <div id="view-accounts" class="tab-view d-none">
              <div class="white-card">
                 <div class="card-header-custom"><div class="card-title">Netcup SCP 账号</div><button class="btn btn-sm btn-primary" onclick="addSoapRow()"><i class="bi bi-plus-lg"></i> 添加</button></div>
-                <div class="p-3 border-bottom bg-light">
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="fw-bold small text-secondary text-nowrap">WSDL 接口地址:</label>
-                        <input id="soap_wsdl" class="form-control form-control-sm font-mono w-100" placeholder="https://www.servercontrolpanel.de/WSEndUser?wsdl">
-                    </div>
-                </div>
                 <div class="config-header">
                     <div class="cfg-soap-id">客户号 (Customer ID)</div>
                     <div class="cfg-soap-pass">SCP 密码</div>
                     <div class="cfg-soap-action"></div>
                 </div>
                 <div id="soapContainer"></div>
-            </div>
+                </div>
         </div>
 
         <div id="view-logs" class="tab-view d-none">
@@ -521,7 +515,6 @@
         document.getElementById('tg_token').value = config.telegram_config?.bot_token||''; document.getElementById('tg_chat').value = config.telegram_config?.chat_id||'';
         document.getElementById('wx_key').value = config.wechat_config?.key || '';
         document.getElementById('wx_app_corpid').value = config.wechat_app_config?.corpid || ''; document.getElementById('wx_app_agentid').value = config.wechat_app_config?.agentid || ''; document.getElementById('wx_app_secret').value = config.wechat_app_config?.secret || '';
-        document.getElementById('soap_wsdl').value = config.soap_config?.wsdl_url || 'https://www.servercontrolpanel.de/WSEndUser?wsdl';
 
         const sc = document.getElementById('serverContainer'); sc.innerHTML='';
         (config.servers||[]).forEach((s,i) => {
@@ -539,7 +532,7 @@
     
     function saveConfig() {
         if(!isLoggedIn)return; 
-        // 移除了 exclude_qb_ips
+        
         config.qb_config={user:document.getElementById('qb_user').value,password:document.getElementById('qb_pass').value,port:parseInt(document.getElementById('qb_port').value)};
         config.vertex_config={api_url:document.getElementById('vt_url').value,api_user:document.getElementById('vt_user').value,api_password:document.getElementById('vt_pass').value,container_name:document.getElementById('vt_container').value};
         delete config.rss_dir; config.rss_ids = document.getElementById('rss_ids').value.split(',').map(s=>s.trim()).filter(x=>x);
@@ -549,7 +542,12 @@
         config.telegram_config={bot_token:document.getElementById('tg_token').value,chat_id:document.getElementById('tg_chat').value};
         config.wechat_config = { key: document.getElementById('wx_key').value };
         config.wechat_app_config = { corpid: document.getElementById('wx_app_corpid').value, agentid: document.getElementById('wx_app_agentid').value, secret: document.getElementById('wx_app_secret').value };
-        config.soap_config.wsdl_url = document.getElementById('soap_wsdl').value;
+
+        // 移除 wsdl_url 字段，确保后端使用默认值
+        if(config.soap_config && config.soap_config.wsdl_url) {
+            delete config.soap_config.wsdl_url;
+        }
+
         const np=document.getElementById('admin_pass').value; if(np)config.admin_password=np;
         fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)}).then(r=>r.json()).then(res=>showToast(res.status==='success'?'配置已保存':'保存失败',res.status==='success'?'success':'error'));
     }
