@@ -116,6 +116,8 @@ docker compose up -d
 ~~~bash
 # 步骤 1: 强制拉取最新的镜像版本
 
+cd /root/netcup-monitor
+
 docker compose pull
 
 # 如果拉取失败: 先注销 ghcr.io
