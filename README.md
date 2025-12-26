@@ -181,5 +181,5 @@ docker compose up -d --force-recreate
 ---
 
 <div align="center">
-    Project maintained by <a href="https://github.com/agonie0v0">懒羊羊>la>
+    Project maintained by <a href="https://github.com/agonie0v0">懒羊羊>
 </div>
