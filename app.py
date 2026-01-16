@@ -87,6 +87,7 @@ def format_duration(seconds):
     return f"{h}h{m}m"
 
 def log_to_db(name, state, up_total, dl_total):
+    state_change = False
     try:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
@@ -104,6 +105,7 @@ def log_to_db(name, state, up_total, dl_total):
                 logger.info(f"[{name}] 状态变更: {last_state} -> {state}")
                 c.execute("UPDATE state_events SET end_time=?, duration=? WHERE id=?", (now, duration, last_id))
                 c.execute("INSERT INTO state_events (server_name, start_time, state) VALUES (?, ?, ?)", (name, now, state))
+                state_change = True
             else:
                 c.execute("UPDATE state_events SET duration=? WHERE id=?", (duration, last_id))
         else:
@@ -111,6 +113,7 @@ def log_to_db(name, state, up_total, dl_total):
             
         conn.commit()
         conn.close()
+        return state_change
     except Exception as e:
         logger.error(f"数据库写入错误: {e}")
 
@@ -418,9 +421,6 @@ class EnhancedVertexClient:
             return False
 
 def send_notifications(config):
-    global last_notify_time
-    if time.time() - last_notify_time < 7200: return
-
     notify_mode = config.get("notify_mode", "telegram") 
     
     try:
@@ -502,8 +502,6 @@ def send_notifications(config):
                     else:
                         logger.error(f"企业微信应用Token获取失败: {token_data}")
             except Exception as e: logger.error(f"企业微信(应用)发送失败: {e}")
-                
-        last_notify_time = time.time()
         
     except Exception as e: logger.error(f"构建通知时出错: {e}")
 
@@ -570,6 +568,7 @@ def run_monitor_task():
             logger.error(f"SOAP Client Init Error: {e}")
             
     good_clients = []
+    send_notity = False
     for s in SERVERS:
         name, ip = s['name'], s['ip']
         is_unmanaged = s.get('unmanaged', False)
@@ -580,7 +579,11 @@ def run_monitor_task():
             up, dl = d.get('up_info_data', 0), d.get('dl_info_data', 0)
         is_throttled = vps_status.get(ip, False)
         state = 'low' if is_throttled else 'high'
-        log_to_db(name, state, up, dl)
+
+        state_change = log_to_db(name, state, up, dl)
+        if not send_notity and state_change:
+            send_notity = True
+
         if not is_unmanaged and not is_throttled:
             if s.get('client_id'): good_clients.append(s['client_id'])
         if not is_unmanaged:
@@ -697,7 +700,9 @@ def run_monitor_task():
         else: logger.warning("无法获取 RSS 规则列表")
         if need_restart: vertex.restart_container()
     
-    send_notifications(config)
+    if send_notity:
+        send_notifications(config)
+
     logger.info("<<< 检测完成")
 
 scheduler = BackgroundScheduler()
