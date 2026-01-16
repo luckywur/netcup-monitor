@@ -7,7 +7,7 @@ on:
 
 env:
   # 注意：镜像名必须全小写
-  IMAGE_NAME: agonie0v0/netcup-monitor
+  IMAGE_NAME: luckywur/netcup-monitor
 
 jobs:
   build-and-push:
