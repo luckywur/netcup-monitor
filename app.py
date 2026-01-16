@@ -463,9 +463,14 @@ def send_notifications(config):
             tg_conf = config.get("telegram_config", {})
             token = tg_conf.get("bot_token")
             chat_id = tg_conf.get("chat_id")
+            tg_proxy = tg_conf.get("tg_proxy")
+            if (tg_proxy and tg_proxy != ""):
+                proxies = {"http": tg_proxy, "https": tg_proxy}
+            else:
+                proxies = {}
             if token and chat_id:
                 try:
-                    requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": tg_text, "parse_mode": "HTML"}, timeout=10)
+                    requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": tg_text, "parse_mode": "HTML"}, timeout=10, proxies=proxies)
                     logger.info("Telegram 通知发送成功")
                 except Exception as e: logger.error(f"Telegram 发送失败: {e}")
         

@@ -308,6 +308,10 @@
                                             <label class="form-label small">TG Chat ID</label>
                                             <input id="tg_chat" class="form-control form-control-sm">
                                         </div>
+                                        <div class="col-6">
+                                            <label class="form-label small">TG Proxy</label>
+                                            <input id="tg_proxy" class="form-control form-control-sm">
+                                        </div>
                                     </div>
                                 </div>
 
@@ -512,7 +516,7 @@
         document.getElementById('keep_cats').value = (config.keep_categories||[]).join(','); 
         document.getElementById('hr_cats').value = (config.hr_config?.categories || []).join(','); document.getElementById('hr_limit').value = config.hr_config?.upload_limit_kb || 10;
         document.getElementById('notify_mode').value = config.notify_mode || 'telegram'; toggleNotifyFields();
-        document.getElementById('tg_token').value = config.telegram_config?.bot_token||''; document.getElementById('tg_chat').value = config.telegram_config?.chat_id||'';
+        document.getElementById('tg_token').value = config.telegram_config?.bot_token||''; document.getElementById('tg_chat').value = config.telegram_config?.chat_id||'';document.getElementById('tg_proxy').value = config.telegram_config?.tg_proxy||'';
         document.getElementById('wx_key').value = config.wechat_config?.key || '';
         document.getElementById('wx_app_corpid').value = config.wechat_app_config?.corpid || ''; document.getElementById('wx_app_agentid').value = config.wechat_app_config?.agentid || ''; document.getElementById('wx_app_secret').value = config.wechat_app_config?.secret || '';
 
@@ -548,7 +552,7 @@
         };
         
         config.notify_mode = document.getElementById('notify_mode').value;
-        config.telegram_config={bot_token:document.getElementById('tg_token').value,chat_id:document.getElementById('tg_chat').value};
+        config.telegram_config={bot_token:document.getElementById('tg_token').value,chat_id:document.getElementById('tg_chat').value,tg_proxy:document.getElementById('tg_proxy').value};
         config.wechat_config = { key: document.getElementById('wx_key').value };
         config.wechat_app_config = { corpid: document.getElementById('wx_app_corpid').value, agentid: document.getElementById('wx_app_agentid').value, secret: document.getElementById('wx_app_secret').value };
 
