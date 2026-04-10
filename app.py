@@ -356,9 +356,14 @@ class EnhancedVertexClient:
             try: s.get(f"{self.base_url}/login", timeout=5) 
             except: pass
             payloads = [{"username": user, "password": pwd}, {"username": user, "password": hashlib.md5(pwd.encode()).hexdigest()}]
+            proxy = self.conf.get("vt_proxy")
+            if (proxy and proxy != ""):
+                proxies = {"http": proxy, "https": proxy}
+            else:
+                proxies = {}
             for p in payloads:
                 try:
-                    r = s.post(f"{self.base_url}/api/user/login", json=p, timeout=10)
+                    r = s.post(f"{self.base_url}/api/user/login", json=p, timeout=10, proxies=proxies)
                     if r.status_code in [200, 302] and "connect.sid" in s.cookies:
                         sid = s.cookies["connect.sid"]
                         self._save_sid(sid)
@@ -386,8 +391,13 @@ class EnhancedVertexClient:
         return data
     def _do_list(self, sid):
         try:
+            proxy = self.conf.get("vt_proxy")
+            if (proxy and proxy != ""):
+                proxies = {"http": proxy, "https": proxy}
+            else:
+                proxies = {}
             url = f"{self.base_url}/api/rss/list"
-            r = requests.get(url, cookies={"connect.sid": sid}, timeout=10)
+            r = requests.get(url, cookies={"connect.sid": sid}, timeout=10, proxies=proxies)
             if r.status_code == 200:
                 res_json = r.json()
                 if res_json.get("success"): return res_json.get("data", [])
@@ -402,8 +412,13 @@ class EnhancedVertexClient:
         return True
     def _do_update(self, data, sid):
         try:
+            proxy = self.conf.get("vt_proxy")
+            if (proxy and proxy != ""):
+                proxies = {"http": proxy, "https": proxy}
+            else:
+                proxies = {}
             url = f"{self.base_url}/api/rss/modify"
-            r = requests.post(url, json=data, cookies={"connect.sid": sid}, headers={"Content-Type": "application/json"}, timeout=10)
+            r = requests.post(url, json=data, cookies={"connect.sid": sid}, headers={"Content-Type": "application/json"}, timeout=10, proxies=proxies)
             success = r.status_code == 200 and "成功" in r.text
             if not success: logger.warning(f"Vertex RSS 更新响应异常: {r.text[:100]}")
             return success
