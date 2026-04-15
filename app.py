@@ -92,8 +92,10 @@ def log_to_db(name, state, up_total, dl_total):
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
         now = time.time()
-        c.execute("INSERT INTO traffic_log (server_name, timestamp, up_total, dl_total, state) VALUES (?, ?, ?, ?, ?)",
-                  (name, now, up_total, dl_total, state))
+
+        if (up_total and dl_total):
+            c.execute("INSERT INTO traffic_log (server_name, timestamp, up_total, dl_total, state) VALUES (?, ?, ?, ?, ?)",
+                    (name, now, up_total, dl_total, state))
         
         c.execute("SELECT id, state, start_time FROM state_events WHERE server_name=? AND end_time IS NULL ORDER BY id DESC LIMIT 1", (name,))
         last_event = c.fetchone()
@@ -592,6 +594,9 @@ def run_monitor_task():
         if r and r.status_code == 200:
             d = r.json()
             up, dl = d.get('up_info_data', 0), d.get('dl_info_data', 0)
+        else: 
+            up = None
+            dl = None
         is_throttled = vps_status.get(ip, False)
         state = 'low' if is_throttled else 'high'
 
